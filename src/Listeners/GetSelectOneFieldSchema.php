@@ -3,6 +3,8 @@
 namespace markhuot\CraftQL\Listeners;
 
 use markhuot\CraftQL\Helpers\StringHelper;
+use markhuot\CraftQL\Types\OptionFieldData;
+
 class GetSelectOneFieldSchema
 {
     /**
@@ -27,6 +29,15 @@ class GetSelectOneFieldSchema
 
         $event->mutation->addArgument($field)
             ->type($graphqlField->getType());
+
+        $event->schema->addField("{$field->handle}_FieldData")
+            ->type(OptionFieldData::class)
+            ->resolve(function ($root, $args, $context, $info) use ($field) {
+                return [
+                    'selected' => (array)$root->{$field->handle},
+                    'options' => $root->{$field->handle}->getOptions(),
+                ];
+            });
     }
 
     static function valuesForField($graphQLField, $craftField) {
@@ -35,6 +46,12 @@ class GetSelectOneFieldSchema
         foreach ($craftField['settings']['options'] as $option) {
             $value = StringHelper::graphQLEnumValueForString($option['value']);
             $name = $value === '' ? 'empty' : $value;
+
+            if (is_numeric($name)) {
+                //$name = \craft\helpers\StringHelper::toPascalCase($option['label']);
+                throw new \Exception('The `'.$craftField->handle.'` field contains numeric values which violates the GraphQL spec. Please use string based values instead.');
+            }
+
             $values[$name] = ['description' => $option['label'], 'value' => $value];
         }
 

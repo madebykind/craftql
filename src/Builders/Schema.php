@@ -6,6 +6,7 @@ use craft\base\Field as CraftField;
 use GraphQL\Type\Definition\Type;
 use GraphQL\Type\Definition\ObjectType;
 use markhuot\CraftQL\Behaviors\SchemaBehavior;
+use markhuot\CraftQL\Events\AlterSchemaFields;
 use markhuot\CraftQL\Request;
 use markhuot\CraftQL\Builders\Field as BaseField;
 
@@ -16,6 +17,7 @@ class Schema extends BaseBuilder {
     protected $context;
     protected $interfaces = [];
     protected $parent;
+    protected static $concreteTypes = [];
 
     function __construct(Request $request, $context=null, $parent=null) {
         $this->request = $request;
@@ -53,6 +55,14 @@ class Schema extends BaseBuilder {
      */
     function getContext() {
         return $this->context;
+    }
+
+    function addConcreteType($type) {
+        static::$concreteTypes[] = $type;
+    }
+
+    function getConcreteTypes() {
+        return static::$concreteTypes;
     }
 
     /**
@@ -185,6 +195,11 @@ class Schema extends BaseBuilder {
     function getFields(): array {
         $this->boot();
         $this->bootBehaviors();
+
+        $event = new AlterSchemaFields;
+        $event->schema = $this;
+        $this->trigger(AlterSchemaFields::EVENT, $event);
+
         return $this->fields;
     }
 
